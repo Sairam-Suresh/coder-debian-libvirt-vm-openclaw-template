@@ -141,6 +141,11 @@ write_files:
     
 bootcmd:
     - |
+      # Ensure HOME is defined system-wide to avoid 'unbound variable' with scripts using 'set -u'
+      if ! grep -q "^HOME=" /etc/environment 2>/dev/null; then
+        echo "HOME=/root" >> /etc/environment
+      fi
+
       if ! grep -q "^CODER_AGENT_TOKEN=" /etc/environment; then
         echo "CODER_AGENT_TOKEN=${coder_agent_token}" >> /etc/environment
       else
