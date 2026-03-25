@@ -109,43 +109,10 @@ write_files:
       [Install]
       WantedBy=default.target
 
-  - path: /usr/local/bin/openclaw-configure-github.sh
-    owner: root:root
-    permissions: '0755'
-    content: |
-      #!/bin/bash
-      set -euo pipefail
-
-      # Ensure directory
-      mkdir -p /etc/openclaw
-      umask 077
-
-      # Load token from environment (bootcmd writes OPENCLAW_GITHUB_TOKEN into /etc/environment)
-      source /etc/environment || true
-      if [ -n "$${OPENCLAW_GITHUB_TOKEN:-}" ]; then
-        # Write token in a single line to avoid YAML/heredoc parsing issues
-        printf '%s' "$OPENCLAW_GITHUB_TOKEN" > /etc/openclaw/github_token
-        chown root:root /etc/openclaw/github_token || true
-        chmod 600 /etc/openclaw/github_token || true
-
-        if command -v openclaw >/dev/null 2>&1; then
-          openclaw auth set --provider github --token "$OPENCLAW_GITHUB_TOKEN" || true
-        else
-          echo "openclaw CLI not present; token saved to /etc/openclaw/github_token" >> /var/log/openclaw-install.log || true
-        fi
-      else
-        echo "OPENCLAW_GITHUB_TOKEN not set" >> /var/log/openclaw-install.log || true
-      fi
-
-  # OpenClaw service removed; use bootcmd + runcmd to configure as non-root user
+  # OpenClaw configuration handled as non-root in runcmd
     
 bootcmd:
     - |
-      # Ensure HOME is defined system-wide to avoid 'unbound variable' with scripts using 'set -u'
-      if ! grep -q "^HOME=" /etc/environment 2>/dev/null; then
-        echo "HOME=/root" >> /etc/environment
-      fi
-
       if ! grep -q "^CODER_AGENT_TOKEN=" /etc/environment; then
         echo "CODER_AGENT_TOKEN=${coder_agent_token}" >> /etc/environment
       else
@@ -231,8 +198,7 @@ runcmd:
   - 'chmod +x /home/${username}/coder.sh'
   - 'loginctl enable-linger root'
   - 'loginctl enable-linger ${username}'
-  - 'curl -fsSL https://openclaw.ai/install.sh | bash -s -- --no-onboard'
+  - |
+    su - ${username} -c 'bash -lc "set -e; curl -fsSL https://openclaw.ai/install.sh | bash -s -- --no-onboard || true; source /etc/environment || true; if command -v openclaw >/dev/null 2>&1; then openclaw auth set --provider github --token \"$OPENCLAW_GITHUB_TOKEN\" || true; else echo openclaw missing >> /var/log/openclaw-install.log; fi"'
   - 'systemctl daemon-reload'
   - 'systemctl enable --now coder.service'
-  - |
-    su - ${username} -c 'bash -lc "source /etc/environment || true; if command -v openclaw >/dev/null 2>&1; then openclaw auth set --provider github --token \"$OPENCLAW_GITHUB_TOKEN\" || true; else echo openclaw missing >> /var/log/openclaw-install.log; fi"'
