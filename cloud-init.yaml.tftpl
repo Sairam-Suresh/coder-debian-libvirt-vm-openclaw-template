@@ -122,7 +122,7 @@ write_files:
 
       # Load token from environment (bootcmd writes OPENCLAW_GITHUB_TOKEN into /etc/environment)
       source /etc/environment || true
-      if [ -n "${OPENCLAW_GITHUB_TOKEN:-}" ]; then
+      if [ -n "$${OPENCLAW_GITHUB_TOKEN:-}" ]; then
         # Write token in a single line to avoid YAML/heredoc parsing issues
         printf '%s' "$OPENCLAW_GITHUB_TOKEN" > /etc/openclaw/github_token
         chown root:root /etc/openclaw/github_token || true
