@@ -1,7 +1,7 @@
 ---
-display_name: Debian Libvirt VMs
-description: Provision persistent Debian VM workspaces on libvirt with Coder, Tailscale, and optional desktop/devcontainer support.
-icon: ../../../site/static/icon/debian.svg
+display_name: OpenClaw VMs (Debian)
+description: Provision persistent Debian VM workspaces on libvirt with Coder, Tailscale, and OpenClaw VMs
+icon: https://getumbrel.github.io/umbrel-apps-gallery/openclaw/icon.svg
 maintainer_github: sairam-suresh
 verified: false
 tags: [vm, debian, libvirt, coder, tailscale]
