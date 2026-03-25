@@ -108,6 +108,34 @@ write_files:
 
       [Install]
       WantedBy=default.target
+
+  - path: /usr/local/bin/openclaw-configure-github.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+
+      # Ensure directory
+      mkdir -p /etc/openclaw
+      umask 077
+
+      # Write token file (provided by cloud-init template)
+      cat > /etc/openclaw/github_token <<'TOKEN'
+${coder_github_auth_token}
+TOKEN
+      chown root:root /etc/openclaw/github_token
+      chmod 600 /etc/openclaw/github_token
+
+      # Best-effort: if `openclaw` CLI exists, attempt to set provider token; do not run setup
+      if command -v openclaw >/dev/null 2>&1; then
+        # Attempt to set GitHub provider token for Copilot integration
+        openclaw auth set --provider github --token "$(cat /etc/openclaw/github_token)" || true
+      else
+        echo "openclaw CLI not present; token saved to /etc/openclaw/github_token" >> /var/log/openclaw-install.log || true
+      fi
+
+  # OpenClaw service removed; use bootcmd + runcmd to configure as non-root user
     
 bootcmd:
     - |
@@ -115,6 +143,12 @@ bootcmd:
         echo "CODER_AGENT_TOKEN=${coder_agent_token}" >> /etc/environment
       else
         sed -i "s|^CODER_AGENT_TOKEN=.*|CODER_AGENT_TOKEN=${coder_agent_token}|" /etc/environment
+      fi
+    - |
+      if ! grep -q "^OPENCLAW_GITHUB_TOKEN=" /etc/environment; then
+        echo "OPENCLAW_GITHUB_TOKEN=${coder_github_auth_token}" >> /etc/environment
+      else
+        sed -i "s|^OPENCLAW_GITHUB_TOKEN=.*|OPENCLAW_GITHUB_TOKEN=${coder_github_auth_token}|" /etc/environment
       fi
 
 runcmd:
@@ -180,3 +214,5 @@ runcmd:
   - 'loginctl enable-linger ${username}'
   - 'systemctl daemon-reload'
   - 'systemctl enable --now coder.service'
+  - |
+    su - ${username} -c 'bash -lc "source /etc/environment || true; if command -v openclaw >/dev/null 2>&1; then openclaw auth set --provider github --token \"$OPENCLAW_GITHUB_TOKEN\" || true; else echo openclaw missing >> /var/log/openclaw-install.log; fi"'

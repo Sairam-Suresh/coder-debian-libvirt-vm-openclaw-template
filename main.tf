@@ -118,6 +118,7 @@ resource "libvirt_cloudinit_disk" "init" {
     coder_agent_token           = coder_agent.main[count.index].token
     ts_port                     = local.ts_port
     install_de                  = data.coder_parameter.install_de.value
+    coder_github_auth_token     = data.coder_external_auth.github.access_token
     coder_agent_init_script_b64 = base64encode(coder_agent.main[count.index].init_script)
   })
   
