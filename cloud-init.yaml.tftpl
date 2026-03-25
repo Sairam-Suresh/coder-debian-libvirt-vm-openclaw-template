@@ -152,6 +152,12 @@ bootcmd:
       else
         sed -i "s|^OPENCLAW_GITHUB_TOKEN=.*|OPENCLAW_GITHUB_TOKEN=${coder_github_auth_token}|" /etc/environment
       fi
+    - |
+      if ! grep -q "^DISPLAY=" /etc/environment; then
+        echo "DISPLAY=:1" >> /etc/environment
+      else
+        sed -i "s|^DISPLAY=.*|DISPLAY=:1|" /etc/environment
+      fi
 
 runcmd:
   - 'set -e'
@@ -203,9 +209,15 @@ runcmd:
     wget -O /tmp/google-chrome-stable_current_amd64.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
     apt-get install -y /tmp/google-chrome-stable_current_amd64.deb
     
-    # Use grep to ensure we don't duplicate on rebuilds if the file persists
-    grep -q "XDG_CURRENT_DESKTOP=xfce" /home/${username}/.xsessionrc || echo "export XDG_CURRENT_DESKTOP=xfce" >> /home/${username}/.xsessionrc
-    grep -q "XDG_SESSION_TYPE=x11" /home/${username}/.xsessionrc || echo "export XDG_SESSION_TYPE=x11" >> /home/${username}/.xsessionrc
+    # Ensure .xsessionrc exists and add desktop/session vars if missing (quietly)
+    mkdir -p /home/${username}
+    touch /home/${username}/.xsessionrc
+    if ! grep -q "XDG_CURRENT_DESKTOP=xfce" /home/${username}/.xsessionrc 2>/dev/null; then
+      echo "export XDG_CURRENT_DESKTOP=xfce" >> /home/${username}/.xsessionrc
+    fi
+    if ! grep -q "XDG_SESSION_TYPE=x11" /home/${username}/.xsessionrc 2>/dev/null; then
+      echo "export XDG_SESSION_TYPE=x11" >> /home/${username}/.xsessionrc
+    fi
     chown ${username}:${username} /home/${username}/.xsessionrc
 %{ endif }
   - 'echo "CODER_AGENT_TOKEN=${coder_agent_token}" > /etc/environment'
